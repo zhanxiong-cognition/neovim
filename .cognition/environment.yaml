@@ -1,0 +1,106 @@
+setup:
+  - name: Install build prerequisites
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y ninja-build gettext cmake curl build-essential git
+
+  - name: Build bundled dependencies
+    run: |
+      make deps
+
+  - name: Build Neovim (Debug)
+    run: |
+      make CMAKE_BUILD_TYPE=Debug
+
+  - name: Verify build
+    run: |
+      ./build/bin/nvim --version
+
+maintenance:
+  - name: Clean rebuild (if build issues occur)
+    run: |
+      make distclean
+      make deps
+      make CMAKE_BUILD_TYPE=Debug
+
+knowledge:
+  - name: Project overview
+    contents: |
+      Neovim is a refactored and extended fork of Vim. It is a terminal-based
+      text editor written primarily in C with an embedded Lua runtime. The
+      project uses CMake as its build system (with Ninja as the preferred
+      generator for faster builds).
+
+  - name: Repository structure
+    contents: |
+      - src/nvim/        C source code for the editor core
+      - runtime/         Runtime files (Lua modules, syntax, docs, etc.)
+      - runtime/lua/vim/ Lua standard library shipped with Neovim
+      - test/functional/ Functional (integration) tests driven via RPC
+      - test/unit/       Unit tests using LuaJIT FFI
+      - test/old/        Legacy Vim tests
+      - cmake/           CMake modules and helpers
+      - cmake.deps/      CMake project for building third-party dependencies
+      - scripts/         Utility and CI scripts
+      - contrib/         Contributor utilities (e.g. minimal.lua for repros)
+
+  - name: Build system
+    contents: |
+      The build uses CMake with a convenience Makefile wrapper. Key commands:
+
+        make                           Build with default (Debug) type
+        make CMAKE_BUILD_TYPE=Release  Build optimized release
+        make deps                      Build bundled third-party dependencies
+        make distclean                 Remove build/ and .deps/ directories
+        make install                   Install to CMAKE_INSTALL_PREFIX (default /usr/local)
+
+      Dependencies (libuv, LuaJIT, treesitter, etc.) are automatically
+      downloaded and built into .deps/ when USE_BUNDLED=1 (the default).
+      The resulting nvim binary is placed in build/bin/nvim.
+
+      You can run the built binary without installing:
+        VIMRUNTIME=runtime ./build/bin/nvim
+
+  - name: Running tests
+    contents: |
+      make test                Run all tests (unit + functional)
+      make unittest            Run unit tests only
+      make functionaltest      Run functional tests only
+      make oldtest             Run legacy Vim tests
+
+      To run a specific test file:
+        TEST_FILE=test/functional/foo_spec.lua make functionaltest
+        TEST_FILE=test/unit/foo.lua make unittest
+
+      To filter tests by name pattern:
+        TEST_FILTER='pattern' make functionaltest
+
+      To filter tests by tag (e.g. #foo in test description):
+        TEST_TAG=foo make functionaltest
+
+  - name: Linting and formatting
+    contents: |
+      make lint       Run all linters (C, Lua, shell, treesitter queries)
+      make format     Run all formatters (C, Lua, treesitter queries)
+
+      Individual targets:
+        make lintc        Lint C code
+        make lintlua      Lint Lua code (luacheck + stylua)
+        make lintsh       Lint shell scripts (shellcheck)
+        make lintcommit   Lint commit messages (conventional commits)
+        make lintdoc      Lint documentation
+        make formatc      Format C code (uncrustify)
+        make formatlua    Format Lua code (stylua)
+
+  - name: Documentation generation
+    contents: |
+      Many :help docs are auto-generated from C and Lua docstrings.
+
+        make doc        Generate documentation
+        make lintdoc    Validate documentation files
+
+  - name: Lua runtime development
+    contents: |
+      The runtime/lua/vim/_core/ modules are precompiled to bytecode.
+      To test changes without rebuilding, start Neovim with:
+        VIMRUNTIME=./runtime ./build/bin/nvim --luamod-dev
